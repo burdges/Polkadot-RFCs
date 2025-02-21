@@ -343,14 +343,14 @@ mod extensions_impl {
     }
 
     #[extensions_impl::extension_struct_impl]
-    impl extension_core::ExtensionCore&lt;ExtensionConfig&gt; for Extensions {
+    impl extension_core::ExtensionCore&lt;ExtensionsConfig&gt; for Extensions {
         fn has_extension(id: u64) -&gt; bool {
             matches!(id, 0 | 1)
         }
     }
 
     #[extensions_impl::extension_struct_impl]
-    impl extension_fungibles::ExtensionFungibles&lt;ExtensionConfig&gt; for Extensions {
+    impl extension_fungibles::ExtensionFungibles&lt;ExtensionsConfig&gt; for Extensions {
         fn total_supply(asset: u32) -&gt; u64 {
             200
         }
@@ -404,8 +404,7 @@ As discussed in <a href="https://graypaper.com/">Equation A.39 in the Gray Paper
 </ul>
 <h4 id="host-calls"><a class="header" href="#host-calls">Host Calls</a></h4>
 <ul>
-<li>
-<p><code>extension_call</code>: A unified entry point that routes queries to various extensions. It accepts two parameters:</p>
+<li><code>extension_call</code>: A unified entry point that routes queries to various extensions. It accepts two parameters:
 <ol>
 <li><code>extension_id</code>
 An <code>u64</code> value for selecting which extension to query, split across two 32-bit registers: lower 32 bits in <code>a0</code> and upper 32 bits in <code>a1</code></li>
@@ -415,8 +414,17 @@ The returned results are stored in registers <code>a0</code> (pointer) and <code
 The host call also has the ability to filter call data requests based on their source of invocation (e.g., Runtime, Extrinsics, RuntimeAPI, or XCM).</li>
 </ol>
 </li>
-<li>
-<p><code>return_ty</code>: Returns the type of a specific view function in a specific extension for type assertion. It accepts two parameters:</p>
+</ul>
+<p><strong>Example Rust Implementation using PolkaVM SDK</strong>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[polkavm_derive::polkavm_import]
+extern &quot;C&quot; {
+    fn extension_call(extension_id:u64, call_ptr:u32, call_len: u32) -&gt; (u32, u32);
+}
+<span class="boring">}</span></code></pre></pre>
+<ul>
+<li><code>return_ty</code>: Returns the type of a specific view function in a specific extension for type assertion. It accepts two parameters:
 <ol>
 <li><code>extension_id</code>
 An <code>u64</code> value for selecting which extension to query, split across two 32-bit registers: lower 32 bits in <code>a0</code> and upper 32 bits in <code>a1</code></li>
@@ -426,6 +434,14 @@ The returned results are stored in register <code>a0</code> (pointer) and <code>
 </ol>
 </li>
 </ul>
+<p><strong>Example Rust Implementation in PolkaVM SDK</strong>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[polkavm_derive::polkavm_import]
+extern &quot;C&quot; {
+    fn return_ty(extension_id:u64, query_index:u32) -&gt; (u32, u32);
+}
+<span class="boring">}</span></code></pre></pre>
 <h3 id="runtimeapi-integration"><a class="header" href="#runtimeapi-integration">RuntimeAPI Integration</a></h3>
 <p>The runtime API for off-chain query usage includes two methods:</p>
 <ul>
@@ -570,7 +586,7 @@ The PVQ does't conflict with them, which can take advantage of these Pallet View
 <li>The metadata of the PVQ extensions can be integrated into <code>frame-metadata</code>'s <code>CustomMetadata</code> field, but the trade-offs (i.e. compatibility between versions) need examination.</li>
 </ul>
 <h2 id="future-directions-and-related-material"><a class="header" href="#future-directions-and-related-material">Future Directions and Related Material</a></h2>
-<p>The implementation work including:</p>
+<p>The implementation work includes:</p>
 <h3 id="pvq-reference-implementation"><a class="header" href="#pvq-reference-implementation">PVQ Reference Implementation</a></h3>
 <p>PVQ Extension Macros, PVQ Executor, RuntimeAPI Integration are implemented in standalone crate.</p>
 <p>XCM integration is implemented in <code>polkadot-sdk</code> repository.</p>
