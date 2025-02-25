@@ -483,7 +483,6 @@ For Polkadot/Kusama this means that also the parachain nodes need to be running 
 <li><a href="proposed/0126-introduce-pvq.html#drawbacks">Drawbacks</a>
 <ul>
 <li><a href="proposed/0126-introduce-pvq.html#performance-issues">Performance issues</a></li>
-<li><a href="proposed/0126-introduce-pvq.html#user-experience-issues">User experience issues</a></li>
 </ul>
 </li>
 <li><a href="proposed/0126-introduce-pvq.html#testing-security-and-privacy">Testing, Security, and Privacy</a></li>
@@ -496,14 +495,7 @@ For Polkadot/Kusama this means that also the parachain nodes need to be running 
 </li>
 <li><a href="proposed/0126-introduce-pvq.html#prior-art-and-references">Prior Art and References</a></li>
 <li><a href="proposed/0126-introduce-pvq.html#unresolved-questions">Unresolved Questions</a></li>
-<li><a href="proposed/0126-introduce-pvq.html#future-directions-and-related-material">Future Directions and Related Material</a>
-<ul>
-<li><a href="proposed/0126-introduce-pvq.html#pvq-program-linker">PVQ Program Linker</a></li>
-<li><a href="proposed/0126-introduce-pvq.html#pvq-dev-console">PVQ Dev Console</a></li>
-<li><a href="proposed/0126-introduce-pvq.html#pvq-registry">PVQ Registry</a></li>
-<li><a href="proposed/0126-introduce-pvq.html#integration-with-existing-proposals">Integration with existing proposals</a></li>
-</ul>
-</li>
+<li><a href="proposed/0126-introduce-pvq.html#future-directions-and-related-material">Future Directions and Related Material</a></li>
 </ul>
 </li>
 </ul>
@@ -515,8 +507,7 @@ For Polkadot/Kusama this means that also the parachain nodes need to be running 
 </tbody></table>
 </div>
 <h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
-<p>This proposal introduces PVQ (PolkaVM Query), which aims to serve as an intermediary layer between different chain runtime implementations and tools/UI, to provide a unified but flexible interface for cross-chain queries.
-<code>PVQ</code> abstracts away concrete implementations across chains and supports custom query computations.</p>
+<p>This proposal introduces PVQ (PolkaVM Query), a unified query interface that bridges different chain runtime implementations and client tools/UIs. PVQ provides an extension-based system where runtime developers can expose chain-specific functionality through standardized interfaces, while allowing client-side developers to perform custom computations on the data through PolkaVM programs. By abstracting away concrete implementations across chains and supporting both off-chain and cross-chain scenarios. PVQ aims to reduce code duplication and development complexity while maintaining flexibility for custom use cases.</p>
 <h2 id="motivation-2"><a class="header" href="#motivation-2">Motivation</a></h2>
 <p>In Substrate, runtime APIs facilitate off-chain clients in reading the state of the consensus system.
 However, the APIs defined and implemented by individual chains often fall short of meeting the diverse requirements of client-side developers.
@@ -526,11 +517,11 @@ As a result, client-side developers frequently resort to directly accessing stor
 <p>Moreover, the diversity also extends to cross-chain queries.</p>
 <p>Therefore, a system that serves as an intermediary layer between runtime implementations and client-side implementations with a unified but flexible interface will be beneficial for both sides. It should be able to:</p>
 <ul>
-<li>Allow runtime developers to provide query apis which may includes data across multiple pallets but aggregate these apis through a unified interface</li>
+<li>Allow runtime developers to provide query APIs which may include data across multiple pallets but aggregate these APIs through a unified interface</li>
 <li>Allow client-side developers to query data from this unified interface across different chains but still has the flexibility to perform custom transformations on the raw data</li>
 <li>Support cross-chain queries through XCM integration</li>
 </ul>
-<p>Use cases will benefit from such a system:</p>
+<p>Use cases that will benefit from such a system:</p>
 <ul>
 <li>XCM bridge UI:
 <ul>
@@ -560,17 +551,17 @@ As a result, client-side developers frequently resort to directly accessing stor
 <h2 id="explanation-2"><a class="header" href="#explanation-2">Explanation</a></h2>
 <p>The core idea of PVQ is to have a unified interface that meets the aforementioned requirements.</p>
 <p>At the runtime side, an extension-based system is introduced to serve as a standardization layer across different chains.
-Each extension specification defines a set of cohesive apis.
+Each extension specification defines a set of cohesive APIs.
 Runtime developers can freely select which extensions they want to implement, and have full control over how the data is sourced - whether from single or multiple pallet functions, with optional data transformations applied.
 The runtime aggregates all implemented extensions into a single unified interface that takes a query program and corresponding arguments, and returns the query result.
 This interface will be exposed in two ways: as a Substrate RuntimeAPI for off-chain queries, and as an XCM instruction for cross-chain queries.</p>
-<p>At the client side or in XCM use cases, it can easily detect what extensions that a runtime supports.
+<p>At the client side or in XCM use cases, the client can easily detect which extensions are supported by a runtime through the metadata API. This allows for runtime feature discovery and enables clients to adapt their behavior based on available functionality.
 Client-side developers can encode their desired custom computation logic into the query program and its arguments, while the actual data access happens through runtime-implemented extensions.</p>
-<p>In conclusion, the PVQ involves three components:</p>
+<p>In conclusion, PVQ involves three components:</p>
 <ul>
-<li>PVQ Extension system: Standardize the functionality across different chains.</li>
+<li>PVQ Extension System: Standardize the functionality across different chains.</li>
 <li>PVQ Executor: Aggregates the extensions and perform the query from off-chain or cross-chain.</li>
-<li>RuntimeAPI/XCM integration: Support off-chain and cross-chain scenarios.</li>
+<li>RuntimeAPI/XCM Integration: Support off-chain and cross-chain scenarios.</li>
 </ul>
 <h3 id="pvq-extension-system"><a class="header" href="#pvq-extension-system">PVQ Extension System</a></h3>
 <p>The PVQ extension system has the following features:</p>
@@ -657,13 +648,25 @@ mod extensions_impl {
 <p>$ExtID = twox64(P \parallel E \parallel M_1 \parallel M_2 \parallel ... \parallel M_n)$</p>
 <p>Where:</p>
 <ul>
-<li>$P$ is the prefix string constant, <code>pvq-ext</code></li>
-<li>$E$ is the extension name</li>
-<li>$M_1...M_n$ are the method names in lexicographical order</li>
-<li>$\parallel$ represents string concatenation with a separator <code>@</code> to avoid collision</li>
-<li>$twox64()$ is the 64-bit xxHash function</li>
-</ul>
+<li>
+<p>$P$ is the prefix string constant, <code>pvq-ext</code></p>
+</li>
+<li>
+<p>$E$ is the extension name</p>
+</li>
+<li>
+<p>$M_1...M_n$ are the method names in lexicographical order</p>
+</li>
+<li>
+<p>$\parallel$ represents string concatenation with a separator <code>@</code> to avoid collision</p>
+</li>
+<li>
+<p>$twox64()$ is the 64-bit xxHash function</p>
+</li>
+<li>
 <p>A permission control system allows filtering extension method invocations based on their origin (Runtime, Extrinsics, RuntimeAPI, or XCM). This enables runtime developers to restrict certain functions from being called through specific interfaces, such as preventing access via XCM when desired.</p>
+</li>
+</ul>
 <h3 id="pvq-executor"><a class="header" href="#pvq-executor">PVQ Executor</a></h3>
 <p>The PVQ Executor provides a unified interface that only takes query programs with corresponding arguments and returns results. It can be formulated as a PVM program-argument invocation, as detailed in <a href="https://graypaper.com/">Appendix A.8 in JAM Gray Paper</a>. Specifically, we call it PVQ invocation.</p>
 <h4 id="program-initialization-and-results-return"><a class="header" href="#program-initialization-and-results-return">Program initialization and Results Return</a></h4>
@@ -678,7 +681,7 @@ PVQ programs have a single static entrypoint that begins at instruction 0, since
 </li>
 <li>
 <p>Argument passing:
-Query data is encoded as invocation arguments. As discussed in <a href="https://graypaper.com/">Equation A.36 in the Gray Paper</a>, arguments starts at <code>0xfeff0000</code> which is the stored in <code>a0</code>(7th register), and the length is specified at <code>a1</code>(8th register).</p>
+Query data is encoded as invocation arguments. Basically, it includes the view function index and its arguments. As discussed in <a href="https://graypaper.com/">Equation A.36 in the Gray Paper</a>, arguments starts at <code>0xfeff0000</code> which is the stored in <code>a0</code>(7th register), and the length is specified at <code>a1</code>(8th register).</p>
 </li>
 <li>
 <p>Return results
@@ -707,9 +710,9 @@ extern &quot;C&quot; {
 }
 <span class="boring">}</span></code></pre></pre>
 <h4 id="pvq-executor-implementation"><a class="header" href="#pvq-executor-implementation">PVQ Executor Implementation</a></h4>
-<p>Practically, the executor has a core method <code>execute</code> to initialize the program<sup class="footnote-reference"><a href="#1">1</a></sup> and perform argument invocation, which takes:</p>
+<p>Practically, the executor has a core method <code>execute</code> to initialize the program and perform argument invocation, which takes:</p>
 <ul>
-<li><code>program</code>: The PVQ main binary which is a trimmed standard PolkaVM binary.</li>
+<li><code>program</code>: The PVQ main binary.</li>
 <li><code>args</code>: The PVQ query data.</li>
 <li><code>gas_limit</code>: The maximum PVM gas limit for the query.</li>
 </ul>
@@ -723,11 +726,10 @@ extern &quot;C&quot; {
     gas_limit: u64,
 ) -&gt; Result&lt;Vec&lt;u8&gt;, PvqExecutorError&gt; {...}
 enum PvqExecutorError {
-  // Not exhaustive, up to the implementor
   InvalidProgramFormat,
   OutOfGas,
-  HostFunctionError(String),
-  OtherPVMError(String),
+  // Implementors can define additional error variants to differentiate specific panic reasons for debugging purposes
+  Panic,
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Additionally, it provides an initialization method that sets up the PVM execution environment and external interfaces by pre-registering the required host functions:</p>
@@ -740,11 +742,11 @@ enum PvqExecutorError {
 <p>The RuntimeAPI for off-chain query usage includes two methods:</p>
 <ul>
 <li>
-<p><code>execute_query</code>: Executes the query and returns the result. It takes the query, input, and weight limit as arguments.</p>
+<p><code>execute_query</code>: Executes the query and returns the result. It takes:</p>
 <ul>
-<li><code>program</code>: The PVQ binary in a trimmed standard PVM program binary format.</li>
+<li><code>program</code>: The PVQ binary.</li>
 <li><code>args</code>: The query arguments that is SCALE-encoded.</li>
-<li><code>ref_time_limit</code>: The maximum allowed execution time for a single query, measured in reference time units.</li>
+<li><code>ref_time_limit</code>: The maximum allowed execution time for a single query, measured in reference time units. The conversion between the PVM gas and reference time is a rather important implementation detail.</li>
 </ul>
 </li>
 <li>
@@ -763,8 +765,9 @@ enum PvqExecutorError {
 type PvqResult =  Result&lt;PvqResponse, PvqError&gt;;
 type PvqResponse = Vec&lt;u8&gt;;
 enum PvqError {
+    InvalidProgramFormat,
     Timeout,
-    Custom(String),
+    Panic(String),
 }
 <span class="boring">}</span></code></pre></pre>
 <p><strong>Example Metadata</strong>:</p>
@@ -783,8 +786,8 @@ enum PvqError {
 <p>Operands:</p>
 <ul>
 <li>
-<p><code>query: BoundedVec&lt;u8, SIZE_LIMIT&gt;</code>: which is the encoded bytes of the tuple <code>(program, args)</code>:
-where <code>SIZE_LIMIT</code> is the generic parameter type size limit (i.e. 2MB).</p>
+<p><code>query: BoundedVec&lt;u8, MAX_QUERY_SIZE&gt;</code>: which is the encoded bytes of the tuple <code>(program, args)</code>:
+where <code>MAX_QUERY_SIZE</code> is the generic parameter type size limit (i.e. 2MB).</p>
 </li>
 <li>
 <p><code>max_weight: Weight</code>: The maximum weight that the query should take.</p>
@@ -796,7 +799,7 @@ where <code>SIZE_LIMIT</code> is the generic parameter type size limit (i.e. 2MB
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>ReportQuery {
-  query: BoundedVec&lt;u8, SIZE_LIMIT&gt;,
+  query: BoundedVec&lt;u8, MAX_QUERY_SIZE&gt;,
   max_weight: Weight,
   info: QueryResponseInfo,
 }
@@ -804,21 +807,32 @@ where <code>SIZE_LIMIT</code> is the generic parameter type size limit (i.e. 2MB
 <ul>
 <li>A new variant to the <code>Response</code> type in <code>QueryResponse</code>
 <ul>
-<li><code>PvqResult = 6 (Vec&lt;u8&gt;)</code>
-The containing bytes is the SCALE-encoded PVQ results.</li>
+<li><code>PvqResult = 6 (BoundedVec&lt;u8, MaxPvqResult&gt;)</code></li>
 </ul>
 </li>
 </ul>
+<p><code>PvqResult</code> is a variant type:</p>
+<ul>
+<li>Ok(Vec<u8>): The successful query result</li>
+<li>Err(PanicReason): The query panics, the specific panic reason is encoded in the bytes.</li>
+</ul>
 <h4 id="errors"><a class="header" href="#errors">Errors</a></h4>
-<p>[//] (details)</p>
+<ul>
+<li><code>FailedToDecode</code>: Invalid PVQ program format</li>
+<li><code>MaxWeightInvalid</code>: The query exceeds the weight limit</li>
+<li><code>Overflow</code>: The query result is too large to fit into the bounded vec</li>
+<li><code>BadOrigin</code></li>
+<li><code>ReanchorFailed</code></li>
+<li><code>NotHoldingFees</code></li>
+<li><code>Unroutable</code></li>
+<li><code>DestinationUnsupported</code></li>
+<li><code>ExceedsMaxMessageSize</code></li>
+<li><code>Transport</code></li>
+</ul>
 <h2 id="drawbacks-1"><a class="header" href="#drawbacks-1">Drawbacks</a></h2>
 <h3 id="performance-issues"><a class="header" href="#performance-issues">Performance issues</a></h3>
 <ul>
 <li>PVQ Program Size: The size of a complicated PVQ program may be too large to be suitable for efficient storage and transmission via XCMP/HRMP.</li>
-</ul>
-<h3 id="user-experience-issues"><a class="header" href="#user-experience-issues">User experience issues</a></h3>
-<ul>
-<li>Debugging: Currently, there is no full-fledged debuggers for PolkaVM programs.</li>
 </ul>
 <h2 id="testing-security-and-privacy-1"><a class="header" href="#testing-security-and-privacy-1">Testing, Security, and Privacy</a></h2>
 <ul>
@@ -830,18 +844,14 @@ The containing bytes is the SCALE-encoded PVQ results.</li>
 <li>Positive test cases:
 <ul>
 <li>Basic queries with various extensions, data types, return values, custom computations, etc.</li>
-<li>Accurate conversion between given weight limit and the gas limit of PolkaVM</li>
+<li>Accurate conversion between given weight limit and the gas limit of PolkaVM for both off-chain and cross-chain queries</li>
 </ul>
 </li>
 <li>Negative test cases:
 <ul>
+<li>Queries with invalid input data</li>
 <li>Queries exceeding weight limits</li>
-<li>Invoking queries from unauthorized sources</li>
-</ul>
-</li>
-<li>Edge cases:
-<ul>
-<li>Queries with minimal or maximum allowed input sizes</li>
+<li>Queries that panics including (no permission, host function error, etc.)</li>
 </ul>
 </li>
 </ul>
@@ -852,47 +862,37 @@ The containing bytes is the SCALE-encoded PVQ results.</li>
 <li>
 <p>Security:</p>
 <ul>
-<li>The PVQ system must enforce a strict read-only policy for all query operations. A mechanism should be implemented to prevent any state-changing operations within PVQ queries. For example, perform a final rollback in  <code>frame_support::storage::with_transaction</code> to ensure the storage won't be changed.</li>
-<li>Clear guidelines and best practices should be provided for parachain developers to ensure secure implementation.</li>
+<li>The PVQ extension implementors must enforce a strict read-only policy for all extension methods.</li>
+<li>The implementation of the PVM engine must be secure and robust, refer to the discussion in <a href="https://graypaper.com/">Gray Paper</a> for more details.</li>
 </ul>
+</li>
+<li>
+<p>Privacy:
+NA</p>
 </li>
 </ul>
 <h2 id="performance-ergonomics-and-compatibility-2"><a class="header" href="#performance-ergonomics-and-compatibility-2">Performance, Ergonomics, and Compatibility</a></h2>
 <h3 id="performance-1"><a class="header" href="#performance-1">Performance</a></h3>
-<p>It's a new functionality, which doesn't modify the existing implementations.
-In the XCM integration, TODO</p>
+<p>It's a new functionality, which doesn't hinder the performance of the existing implementations.</p>
 <h3 id="ergonomics-1"><a class="header" href="#ergonomics-1">Ergonomics</a></h3>
 <p>From the perspective of off-chain tooling, this proposal streamlines development by unifying multiple chain-specific RuntimeAPIs under a single consistent interface.
 This significantly benefits wallet and dApp developers by eliminating the need to handle individual implementations for similar operations across different chains. The proposal also enhances development flexibility by allowing custom computations to be modularly encapsulated as PolkaVM programs that interact with the exposed APIs.</p>
 <h3 id="compatibility-1"><a class="header" href="#compatibility-1">Compatibility</a></h3>
-<p>For RuntimeAPI integration, the proposal defines new apis, which doesn't break compatibility with existing interfaces.</p>
+<p>For RuntimeAPI integration, the proposal defines new APIs, which doesn't break compatibility with existing interfaces.
+For XCM Integration, the proposal doesn't modify the existing XCM message format, which is backward compatible.</p>
 <h2 id="prior-art-and-references-2"><a class="header" href="#prior-art-and-references-2">Prior Art and References</a></h2>
 <p>There are several discussions related to the proposal, including:</p>
 <ul>
 <li><a href="https://forum.polkadot.network/t/wasm-view-functions/1045">Original discussion</a> about having a mechanism to avoid code duplications between the runtime and front-ends/wallets. In the original design, the custom computations are compiled as a wasm function.</li>
 <li><a href="https://github.com/paritytech/polkadot-sdk/pull/4722">View functions</a> aims to provide view-only functions in pallet level. Additionally, <a href="https://github.com/paritytech/polkadot-sdk/pull/4722">Facade Project</a> aims to gather and return commonly wanted information in runtime level.
-The PVQ does't conflict with them, which can take advantage of these Pallet View Functions / Runtime APIs and allow people to build arbitrary PVQ programs to obtain more custom/complex data that isn't otherwise expressed by these two proposals.</li>
+The PVQ doesn't conflict with them, and it can take advantage of these Pallet View Functions / Runtime APIs and allow people to build arbitrary PVQ programs to obtain more custom/complex data that isn't otherwise expressed by these two proposals.</li>
 </ul>
 <h2 id="unresolved-questions-2"><a class="header" href="#unresolved-questions-2">Unresolved Questions</a></h2>
 <ul>
-<li>The metadata of the PVQ extensions can be integrated into <code>frame-metadata</code>'s <code>CustomMetadata</code> field, but the trade-offs (i.e. compatibility between versions) need examination.</li>
+<li>The metadata of PVQ extensions can be integrated into <code>frame-metadata</code>'s <code>CustomMetadata</code> field, but the trade-offs (i.e. compatibility between versions) need examination.</li>
 </ul>
 <h2 id="future-directions-and-related-material-2"><a class="header" href="#future-directions-and-related-material-2">Future Directions and Related Material</a></h2>
-<h3 id="pvq-program-linker"><a class="header" href="#pvq-program-linker">PVQ Program Linker</a></h3>
-<p>A tool to trim the standard PVM binary format.</p>
-<h3 id="pvq-dev-console"><a class="header" href="#pvq-dev-console">PVQ Dev Console</a></h3>
-<p>A PVQ dev console similar to the chain state page in pjs apps.</p>
-<ul>
-<li>Display all the supported extensions and their methods</li>
-<li>Allow user to invoke those methods with custom arguments</li>
-</ul>
-<h3 id="pvq-registry"><a class="header" href="#pvq-registry">PVQ Registry</a></h3>
-<p>Although there's no mandatory central registry for storing PVQ binary in an extension-based design, we can still setup a community-driven registry for storing popular PVQ binaries.</p>
-<h3 id="integration-with-existing-proposals"><a class="header" href="#integration-with-existing-proposals">Integration with existing proposals</a></h3>
-<p>Once the PVQ reference implementation and the aforementioned proposals are ready, some apis can be aggregated, i.e. the metadata.</p>
-<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
-<p><a href="https://graypaper.com/">Appendix A.7 in JAM Gray Paper</a></p>
-</div>
+<p>Once the PVQ and the aforementioned Facade Project are ready, there are opportunities to consolidate overlapping functionality between the two systems. For example, the metadata APIs could potentially be unified to provide a more cohesive interface for runtime information. This would help reduce duplication and improve maintainability while preserving the distinct benefits of each approach.</p>
 <div style="break-before: page; page-break-before: always;"></div><p><a href="https://github.com/polkadot-fellows/RFCs/pull/135">(source)</a></p>
 <p><strong>Table of Contents</strong></p>
 <ul>
