@@ -150,9 +150,26 @@ In theory, validators could adopt whatever strategy they like to penalize valida
 
 ### Consensus
 
-We avoid placing rewards logic on the relay chain now, so we must either collect the signed `ApprovalsTallyMessage`s and do the above computations somewhere sufficiently trusted, like a parachain, or via some distributed protocol with its own assumptions.
+We avoid placing rewards logic on the relay chain now, so we must either collect the signed `ApprovalsTallyMessage`s and do the above computations somewhere sufficiently trusted, like a parachain, or via some distributed protocol with its own assumptions.  We propose placing the `ApprovalTallyMessage` on-chain via signed extrinsics, and to perform the Rewards Computation and distribution of rewards on Asset Hub.
 
-#### In-core
+#### Approval Tallies Submission
+
+We propose to place the `ApprovalTallyMessage` on chain for a previous session by submitting a signed extrinisic containing the `ApprovalTallyMessage` signed using the validator's ed25519 public key over the course of the current session.  Extra parameters of the signed extrinsic will include session index and era index required for validation. Validators need to ensure that the `ApprovalTallyMessage` signed extrinsic is successfully executed and included in a finalized block within the current session for it to be accounted for during rewards calculation.  Multiple `ApprovalTallyMessages` from the same validator can be treated as malicious/impolite in the future, but in any case only the latest `ApprovalTallyMessage` based on block height will be considered when calculating rewards.  
+
+The signed extrinsic fee should be a non-zero (TODO: ask for guidance here), given there is a constrained number of blocks in a session to report the tallies for the previous session, so we should disincentivize spamming the transaction pool (TODO: will it though? if fee isn't actually taken?).  Succesfully validated signed extrinsics containing an `ApprovalTallyMessage` will call `rewards::report_approvals_tally_message` to store the `ApprovalTallyMessage` for each validator for the previous session.
+
+Validation of the `ApprovalTallyMessage` signed extrinsic ensures that the public key of the validator that submitted the signed extrinsic.  Ensures that the session index is equal to the previous session index within the same era. Verifies that the public key of the sender of the signed extrinsic needs to be the public key of a validator that was within the active validator set for the provided session index and era index. Otherwise the extrinsic will be rejected and will not be used in rewards computation. 
+
+#### Rewards Computation to Asset Hub
+
+We propose adding logic to calculate Approval Checking rewards to current backing validator points logic in the Relay Chain runtime. The runtime will need to accumulate all the reported `ApprovalTallyMessage`s from state for a given session.  Rewards will be calculated based on the accumulated `ApprovalTallyMessage`s for each session.  The calculation is as defined in the [Rewards Computation](#rewards-computation) section.  Validator points will be calculated for all sessions in an era and distributed at the beginning of the next era as is how backing rewards are currently distributed on Asset Hub.  
+
+When calculating the `approval_usages_medians` we need to ensure that we obtain BFT consensus on the `approval_usages_medians` provided by all the validators for the session.  If the set of `approval_usages_medians` for a given validator as reported by other validators does not contain a median value that is reported by 2/3rds of the validator set, then we have not formed consensus for that session and approval checking rewards will not be awarded to that validator for that session.  
+
+Rewards computation will issue validator points for approval checking that align with the [catgegories](#categories) defined earlier.  The validator points will be sent via the [SessionReport](https://github.com/paritytech/polkadot-sdk/blob/f7b0396e3b7f826166cb5acc4a4248307af6d708/substrate/frame/staking-async/rc-client/src/lib.rs#L290) to Asset Hub for rewards distribution.
+
+
+<!-- #### In-core
 
 > NOTE: we are not populating a merkle tree, but rather just posting the tallies on-chain
 
@@ -180,7 +197,7 @@ All validators could collect `ApprovalsTallyMessage`s and independently compute 
 
 We'd have the same in-core computation problem if we perform statistics like medians upon these opinions. We could however take an optimistic approach where each validator computes medians like above, but then shares their hash of the final rewards list.  If 2/3rds voted for the same hash, then we distribute rewards as above.  If not, then we distribute no rewards until governance selects the correct hash.
 
-We never validate in-core the signatures on `ApprovalsTallyMessage`s or the computation, so this approach permits more direct cheating by malicious 2/3rd majority, but if that occurs then we've broken our security assumptions anyways.  It's somewhat likely these hashes do diverge during some network disruptions though, which increases our "drama" factor considerably, which maybe unacceptable.
+We never validate in-core the signatures on `ApprovalsTallyMessage`s or the computation, so this approach permits more direct cheating by malicious 2/3rd majority, but if that occurs then we've broken our security assumptions anyways.  It's somewhat likely these hashes do diverge during some network disruptions though, which increases our "drama" factor considerably, which maybe unacceptable. -->
 
 
 ## Explanation
@@ -202,7 +219,7 @@ As always we require that backers' rewards covers their operational costs plus s
 
 In Polkadot, all validators run the ELVES approval loop for each candidate, in which the validator listens to other approval checkers assignments and approval statements/votes, and with which it marks checkers no-show or done, and marks candidates approved.  Also, this loop determines and announces validators' own approval checker assignments.
 
-Any validator should always conclude whatever approval checks it begins, but our approval assignment loop ignore some approval checks, either because they were announced too soon or because an earlier no-show delivered its approval vote before the final approval.  We say a validator $u$ *uses* an approval vote by a validator $v$ on a candidate $c$ if the approval assignments loop by $u$ counted the vote by $v$ towards approving the candidate $c$.  We actually rerun the ELVES approval loop quite frequently, but only the final run that marks the candidate approved determines the *useful* approval votes.
+Any validator should always conclude whatever approval checks it begins, but our approval assignment loop ignores some approval checks, either because they were announced too soon or because an earlier no-show delivered its approval vote before the final approval.  We say a validator $u$ *uses* an approval vote by a validator $v$ on a candidate $c$ if the approval assignments loop by $u$ counted the vote by $v$ towards approving the candidate $c$.  We actually rerun the ELVES approval loop quite frequently, but only the final run that marks the candidate approved determines the *useful* approval votes.
 
 We should not rewards votes announced too soon, so by only counting the final run we unavoidably omit rewards for some honest no-show replacements too.  We expect the 80%-ish discount for backing covers these losses, so approval checks remain more profitable than backing.
 
@@ -218,7 +235,7 @@ As discussed in https://hackmd.io/@rgbPIkIdTwSICPuAq67Jbw/S1fHcvXSF we could com
 
 We never achieve true consensus on approval checkers and their approval votes.  Yet, our approval assignment loop gives a rough consensus, under our Byzantine assumption and some synchrony assumption.  It then follows that miss-reporting by malicious validators should not appreciably alter the median $\alpha_v$ and hence rewards.  
 
-We never tally used approval assignments to candidate equivocations or other forks.  Any validator should always conclude whatever approval checks it begins, even on other forks, but we expect relay chain equivocations should be vanishingly rare, and sassafras should make forks uncommon.
+We never tally used approval assignments to candidate equivocations or other forks.  Any validator should always conclude whatever approval checks it begins, even on other forks, but we expect relay chain equivocations should be vanishingly rare, and SASSAFRAS should make forks uncommon.
 
 We account for noshows similarly, and deduce a much smaller amount of rewards, but require a 2/3 percentile level, not just a median.
 
@@ -248,7 +265,7 @@ At this point, we compute $\beta\prime_w = \sum_v \beta\prime_{w,v}$ on-chain fo
 
 ### Tit-for-tat
 
-We employ a tit-for-tat strategy to punish validators who lie about from whom they obtain availability chunks.  We only alter validators future choices in from whom they obtain availability chunks, and never punish by lying ourselves, so nothing here breaks polkadot, but not having roughly this strategy enables cheating.  
+We employ a tit-for-tat strategy to punish validators who lie about from whom they obtain availability chunks.  We only alter validators future choices in from whom they obtain availability chunks, and never punish by lying ourselves, so nothing here breaks Polkadot, but not having roughly this strategy enables cheating.  
 
 An availability provider $w$ defines $\delta\prime_{w,v} := \gamma\prime_{w,v} - \beta\prime_{w,v}$ to be the re-weighted number of chunks by which $v$ *stiffed* $w$.  Now $w$ increments their cumulative stiffing perception $\eta_{w,v}$ from $v$ by the value $\delta\prime_{w,v}$, so $\eta_{w,v} \mathrel{+}= \delta\prime_{w,v}$
 
