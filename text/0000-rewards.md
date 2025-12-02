@@ -193,8 +193,8 @@ All validators could collect `ApprovalsTallyMessage`s and independently compute 
 
 We'd have the same in-core computation problem if we perform statistics like medians upon these opinions. We could however take an optimistic approach where each validator computes medians like above, but then shares their hash of the final rewards list.  If 2/3rds voted for the same hash, then we distribute rewards as above.  If not, then we distribute no rewards until governance selects the correct hash.
 
-We never validate in-core the signatures on `ApprovalsTallyMessage`s or the computation, so this approach permits more direct cheating by malicious 2/3rd majority, but if that occurs then we've broken our security assumptions anyways.  It's somewhat likely these hashes do diverge during some network disruptions though, which increases our "drama" factor considerably, which maybe unacceptable. -->
-
+We never validate in-core the signatures on `ApprovalsTallyMessage`s or the computation, so this approach permits more direct cheating by malicious 2/3rd majority, but if that occurs then we've broken our security assumptions anyways.  It's somewhat likely these hashes do diverge during some network disruptions though, which increases our "drama" factor considerably, which maybe unacceptable. 
+-->
 
 ## Explanation
 
