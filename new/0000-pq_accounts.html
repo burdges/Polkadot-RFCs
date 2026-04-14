@@ -186,7 +186,7 @@
 <ul>
 <li><a href="#host-calls">Host calls</a></li>
 <li><a href="#secret-key-derivation">Secret key derivation</a></li>
-<li><a href="#account-names">Account names</a></li>
+<li><a href="#accounts">Accounts</a></li>
 <li><a href="#batch-verification-for-sr25519-and-ed25519">Batch verification for sr25519 and ed25519</a></li>
 </ul>
 </li>
@@ -242,8 +242,9 @@
 <p>We cannot derive a post-quantum key from the scalar in an (expanded) secret key for an elliptic curve signature, because the quantum comouter could break the soft parent, and then derive the secret child.  In principle, a &quot;truly&quot; hard derivation path constructed from hashes alone works fine here, but this never exists in practice.  In schnorrkel for example, we sadly accepted the poor design choice of allowing hard derivations based upon soft derivations, which prompted using the scalar for all derivations in <code>schnorrkel::{SecretKey,Keypair,MiniSecretKey}::hard_derive_mini_secret_key</code>.  As I recall, BIP32 works this way too, so a couple stakeholders requested the hard-soft derivations of BIP32, instead of true hard derivations. </p>
 <p>As a result, we need an entirely seperate true hard derivation path that uses only hash functions.  We could explore some hybrid combiners for the derivation path that intermix the elliptic curve key somehow, but afaik this brings no advantage over a seperate parallel purely hard derivation tree.  As soft derivations loose their privacy against quantum computers, we could simply abandon them and not derive FN-DSA secret keys below soft derivations.  If we do derive below soft derivations, then we retain soft derivation anonymity only against classical adversaries.</p>
 <p>It's possible someone constructs a soft derivation for FN-DSA eventually, but if so they would necessarily entwine the FN-DSA and elliptic curve for hybrid post-quantum unlinkability, so we'd require some third hybrid post-quantum soft derivation type.</p>
-<h3 id="account-names"><a class="header" href="#account-names">Account names</a></h3>
-<p>All the above assumes that accounts remain named by their elliptic curve key.  If a quantum computer does not yet exist, then there is no problem doing this.  A quantum adversary could register their own FN-DSA key for any unclaimed accounts.  We can ignore this concern for now (see Appendix).</p>
+<h3 id="accounts"><a class="header" href="#accounts">Accounts</a></h3>
+<p>Hybrid post-quantum accounts should be identified by the hash of both their public keys keys together, ala <code>blake2b(&quot;hpq_account&quot;,a.fn_dsa_pk,a.sr25519_pk)</code>.  We should avoid two hybrid post-quantum accounts having the same elliptic curve public key, so each hybrid post-quantum account needs a free-ish alias named by its elliptic curve public key.  We could optimise this off-chain at RFC nodes for inocming payments, but we'll likely need some on-chain implementation too.</p>
+<p>A quantum adversary could register their own FN-DSA key for any unhybridized accounts, but this concern could mostly be ignored (see Appendix).  We do however have a problem that hackers could hybid an existing unhybrided account, which makes our past rescue techniques useless.  If this borthers us, then we could add some waiting period before hybridizing takes effect, so then a hacked user could keep unhybridizing.</p>
 <p>At some point in the future, we could require some STARK proof that the FN-DSA and sr25519 derivation paths agree.  We caution aginst this effort now for several reasons, like development being expensive, and the hybrid transition proofs being massive.  Also, there maybe better options in the 
 non-imminent future but still long before quantum computers appear, like entwined hybrid soft derivations, lattice only protocols, or simply changes in how the community views unclaimed DOTs. </p>
 <h3 id="batch-verification-for-sr25519-and-ed25519"><a class="header" href="#batch-verification-for-sr25519-and-ed25519">Batch verification for sr25519 and ed25519</a></h3>
